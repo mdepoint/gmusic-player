@@ -1,76 +1,109 @@
 #!/usr/bin/env python
 
 from gmusicapi import Musicmanager
-from gmusicapi import Mobileclient
-import pyglet
 import pygame
 import os
-import json
 from random import shuffle
 import threading
 import pickle
+import argparse
+import signal
+import sys
 
 skip = False
 pause = False
 play = False
 quit = False
 
-try:
-    os.remove("*.mp3")
-except:
-    clean = True
+def exit_cleanly(signum, frame):
+    singal.signal(signal.SIGINT, original_sigint)
 
-print "Logging In..."
-mm = Musicmanager()
-#mm.perform_oauth()
-login = mm.login()
+    print "Cleaning Up..."
+    try:
+        os.remove("*.mp3")
+    except:
+        clean = True
+    sys.exit(1)
 
-#print "Getting Songs"
-#library = mm.get_uploaded_songs()
-#with open('library.txt','w') as f:
-#    pickle.dump( library, f)
+if __name__ == '__main__':
 
-print "Loading Library..."
-with open('library.txt','r') as f:
-    library = pickle.load( f )
+    original_sigint = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, exit_cleanly)
 
-print "Shuffling Library..."
-#shuffle(library)
 
-pygame.mixer.init()
+    parser = argparse.ArgumentParser(description="Google Music Player")
+    parser.add_argument('-l','--login', required=False, help='Create login credentials.', action="store_true")
+    parser.add_argument('-s','--shuffle', required=False, help='Play in random order.', action="store_true")
+    parser.add_argument('-r', '--refresh', required=False, help='Refresh Library.', action="store_true")
+    parser.add_argument('-d', '--display', required=False, help='Display playlist only.', action="store_true")
+    parser.add_argument('-t', '--artist', required=False, help='Artist Filter' )
+    args = parser.parse_args()    
 
-print "Starting Playback..."
-for song in library:
+    mm = Musicmanager()
+    if args.login:
+        mm.perform_oath()
+        sys.exit(0)
 
-#    if 'Trees' not in song['artist']:
- #      continue
-    if 'Everything Will' not in song['album']:
-        continue
+    print "Logging In..."
+    mm.login()
 
-    filename, audio = mm.download_song(song['id'])
+    if args.refresh:
+        print "Getting Songs"
+        library = mm.get_uploaded_songs()
+        with open('library.txt','w') as f:
+            pickle.dump( library, f)
+
+    print "Loading Library..."
+    with open('library.txt','r') as f:
+        library = pickle.load( f )
+
+    # Create playlist
+    playlist = []
+    for song in library:
+        if args.artist:
+            if args.artist.lower() not in song['artist'].lower():
+                continue
+
+        playlist.append( song )
+
+    if args.shuffle:
+        print "Shuffling Library..."
+        shuffle(playlist)
+
+    if args.display:
+        for song in playlist:
+            print "%s: %s" % ( song['artist'], song['title'])
+        sys.exit(0)
+
+    pygame.mixer.init()
+
+    print "Starting Playback..."
+    for song in playlist:
+
+        filename, audio = mm.download_song(song['id'])
    
-    with open(filename, 'wb') as f:
-        f.write(audio)
-    print "Playing: " + filename
+        with open(filename, 'wb') as f:
+            f.write(audio)
+        print "Playing: " + filename
 
 #    kethread = KeyEventThread()
 #    kethread.start()
 
-    pygame.mixer.music.load(filename)
-    pygame.mixer.music.play()
+        pygame.mixer.music.load(filename)
+        pygame.mixer.music.play()
 
-    while pygame.mixer.music.get_busy()==True:
-        if skip==True:
-            skip = False
-            print "Skipping..."
-            break
+        while pygame.mixer.music.get_busy()==True:
+            if skip==True:
+                skip = False
+                print "Skipping..."
+                break
+            if quit==True:
+                break
+            continue
+
+        os.remove(filename)
+
         if quit==True:
             break
-        continue
-
-    os.remove(filename)
-
-    if quit==True:
-        break
 
 
