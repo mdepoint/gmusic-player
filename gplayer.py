@@ -16,7 +16,7 @@ play = False
 quit = False
 
 def exit_cleanly(signum, frame):
-    singal.signal(signal.SIGINT, original_sigint)
+    signal.signal(signal.SIGINT, original_sigint)
 
     print "Cleaning Up..."
     try:
@@ -82,14 +82,15 @@ if __name__ == '__main__':
 
         filename, audio = mm.download_song(song['id'])
    
-        with open(filename, 'wb') as f:
+	safe_filename = filename.replace(' ', '_')
+        with open(safe_filename, 'wb') as f:
             f.write(audio)
         print "Playing: " + filename
 
 #    kethread = KeyEventThread()
 #    kethread.start()
 
-        pygame.mixer.music.load(filename)
+        pygame.mixer.music.load(safe_filename)
         pygame.mixer.music.play()
 
         while pygame.mixer.music.get_busy()==True:
@@ -101,7 +102,7 @@ if __name__ == '__main__':
                 break
             continue
 
-        os.remove(filename)
+        os.remove(safe_filename)
 
         if quit==True:
             break
