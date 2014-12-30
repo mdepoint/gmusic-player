@@ -17,7 +17,6 @@ class MusicPlayer(restful.Resource):
 
     def post(self):
         global pandora
-        print "Yes"
 
         info = request.get_json(force=True)
 
@@ -29,9 +28,9 @@ class MusicPlayer(restful.Resource):
                 print "Starting Pandora"
                 pandora = subprocess.Popen( 'pianobar', stdin=subprocess.PIPE, stdout=subprocess.PIPE )
                 print pandora
-                time.sleep( 7 )
+                time.sleep( 3 )
                 pandora.stdin.write( '^' )
-                time.sleep( 2 )
+                time.sleep( 1 )
             
             if 'station' in info:
                 pandora.stdin.write( 's' )
@@ -40,6 +39,16 @@ class MusicPlayer(restful.Resource):
                 stat = str(info['station']) + '\n'
                 pandora.stdin.write( stat )
            
+            if 'action' in info:
+                if info['action']=='stop':
+                    pandora.terminate()
+                    pandora = None
+                elif info['action']=='pause':
+                    pandora.stdin.write( 'p' )
+
+
+
+
 
 def init():
     api.add_resource(MusicPlayer, "/")
