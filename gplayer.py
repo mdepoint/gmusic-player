@@ -9,6 +9,8 @@ import pickle
 import argparse
 import signal
 import sys
+import threading
+import time
 
 skip = False
 pause = False
@@ -24,6 +26,47 @@ def exit_cleanly(signum, frame):
     except:
         clean = True
     sys.exit(1)
+
+class PlayThread(threading.Thread):
+
+    def __init__(self, mm, playlist):
+        threading.Thread.__init__(self)
+        self.playlist = playlist
+        self.mm = mm
+        pygame.mixer.init()
+
+    def run(self):
+        global skip
+        global quit
+
+        print "Starting Playback..."
+        for song in playlist:
+
+            filename, audio = self.mm.download_song(song['id'])
+   
+	    safe_filename = filename.replace(' ', '_')
+            with open(safe_filename, 'wb') as f:
+                f.write(audio)
+            print "Playing: " + filename
+
+            pygame.mixer.music.load(safe_filename)
+            pygame.mixer.music.play()
+
+            while pygame.mixer.music.get_busy()==True:
+                if skip==True:
+                    skip = False
+                    print "Skipping..."
+                    break
+                if quit==True:
+                    break
+                continue
+
+            os.remove(safe_filename)
+
+            if quit==True:
+                break
+
+
 
 if __name__ == '__main__':
 
@@ -75,36 +118,14 @@ if __name__ == '__main__':
             print "%s: %s" % ( song['artist'], song['title'])
         sys.exit(0)
 
-    pygame.mixer.init()
+    t = PlayThread( mm, playlist )
+    t.daemon = True
+    t.start()
 
-    print "Starting Playback..."
-    for song in playlist:
-
-        filename, audio = mm.download_song(song['id'])
-   
-	safe_filename = filename.replace(' ', '_')
-        with open(safe_filename, 'wb') as f:
-            f.write(audio)
-        print "Playing: " + filename
-
-#    kethread = KeyEventThread()
-#    kethread.start()
-
-        pygame.mixer.music.load(safe_filename)
-        pygame.mixer.music.play()
-
-        while pygame.mixer.music.get_busy()==True:
-            if skip==True:
-                skip = False
-                print "Skipping..."
-                break
-            if quit==True:
-                break
-            continue
-
-        os.remove(safe_filename)
-
-        if quit==True:
+    while True:
+        time.sleep( 1 )
+        if quit:
             break
+
 
 
