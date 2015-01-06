@@ -27,6 +27,17 @@ def exit_cleanly(signum, frame):
         clean = True
     sys.exit(1)
 
+def getch():
+    import sys, tty, termios
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
 class PlayThread(threading.Thread):
 
     def __init__(self, mm, playlist):
@@ -52,7 +63,7 @@ class PlayThread(threading.Thread):
             pygame.mixer.music.load(safe_filename)
             pygame.mixer.music.play()
 
-            while pygame.mixer.music.get_busy()==True:
+            while quit==False and pygame.mixer.music.get_busy()==True:
                 if skip==True:
                     skip = False
                     print "Skipping..."
@@ -123,7 +134,14 @@ if __name__ == '__main__':
     t.start()
 
     while True:
-        time.sleep( 1 )
+        char = getch()
+
+        if char is not None:
+            if char=='q':
+                quit = True
+            elif char=='s':
+                skip = True
+        #time.sleep( 1 )
         if quit:
             break
 
